@@ -3,6 +3,23 @@ import csv
 import requests
 from bs4 import BeautifulSoup
 
+def validate_url(url: str) -> bool:
+    """Validate if the provided URL is correct."""
+    protocol = ("http://", "https://")
+    return url.startswith(protocol)
+
+def parse_arguments():
+    """Parse and validate command-line arguments."""
+    parser = argparse.ArgumentParser(description="Elections Scraper")
+    parser.add_argument("url", type=str, help="URL of the electoral district")
+    parser.add_argument("output", type=str, help="Name of the output CSV file")
+    args = parser.parse_args()
+
+    if not validate_url(args.url):
+        print("Error: The provided URL is not valid.")
+        exit(1)
+    return args
+
 def scrape_main_table(url: str) -> list:
     """Scrapes the main table of electoral districts."""
     response = requests.get(url)
@@ -94,13 +111,9 @@ def save_to_csv(data: list, filename: str):
                 *party_votes
             ])
 
-def main():
-    args = [
-        "https://www.volby.cz/pls/ps2017nss/ps32?xjazyk=CZ&xkraj=12&xnumnuts=7103", 
-        "vysledky_prostejov.csv"
-    ]
+def main(url):
     # Scrape the main table
-    main_data = scrape_main_table(args[0])
+    main_data = scrape_main_table(url)
     results = {}
     all_results = []
 
@@ -120,10 +133,11 @@ def main():
 
     return all_results
 
+
 if __name__ == "__main__":
 
-    print(main())
-    # Save results to a CSV file
-    save_to_csv(main(), "vysledky_prostejov.csv")
-    print("Data saved to vysledky_prostejov.csv")
-
+    args = parse_arguments()
+    # Scrape the tables and save to CSV
+    print(f"Please wait... Scraping data from {args.url}.")
+    save_to_csv(main(args.url), args.output)
+    print(f"Results have been saved to {args.output}.")
