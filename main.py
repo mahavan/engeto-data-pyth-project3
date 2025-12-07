@@ -22,12 +22,21 @@ def scrape_main_table(url: str) -> list:
                 data.append({
                     'code': cells[0].text.strip(),
                     'name': cells[1].text.strip(),
-                    'link': link['href']
+                    'link': f"https://www.volby.cz/pls/ps2017nss/{link['href']}"
                 })
     return data
 
 def scrape_voting_results(link: str) -> dict:
-    pass
+    """Scrapes voting results for a specific municipality."""
+    response = requests.get(link)
+    soup = BeautifulSoup(response.text, 'html.parser')
+
+    results = {
+        'registered': soup.find(headers='sa2').text, # voters on the list 
+        'envelopes': soup.find(headers='sa3').text,  # issued envelopes  
+        'valid': soup.find(headers='sa6').text       # valid votes
+    }
+    return results
 
 def save_to_csv(data: list, filename: str):
     pass
@@ -42,5 +51,13 @@ if __name__ == "__main__":
 
     # Scrape the main table
     main_data = scrape_main_table(args[0])
-    print(main_data)    
     all_results = []
+
+    # Scrape voting results for each municipality
+    for item in main_data:
+        result = scrape_voting_results(item['link'])
+        result['code'] = item['code']
+        result['name'] = item['name']
+        all_results.append(result)
+
+    print(all_results)
