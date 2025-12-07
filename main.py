@@ -1,7 +1,15 @@
+"""
+Project 3
+Elections Scraper
+This script scrapes electoral data from a specified URL 
+from website https://www.volby.cz/pls/ps2017nss/ps3?xjazyk=CZ 
+and saves it to a CSV file.
+"""
 import argparse
 import csv
 import requests
 from bs4 import BeautifulSoup
+
 
 def validate_url(url: str) -> bool:
     """Validate if the provided URL is correct."""
@@ -12,7 +20,7 @@ def validate_output_file(filename: str) -> bool:
     """Validate if the output file has a .csv extension."""
     return filename.endswith('.csv')
 
-def parse_arguments():
+def parse_arguments() -> argparse.Namespace:
     """Parse and validate command-line arguments."""
     parser = argparse.ArgumentParser(description="Elections Scraper")
     parser.add_argument("url", type=str, help="URL of the electoral district")
@@ -31,8 +39,8 @@ def parse_arguments():
 
     return args
 
-def scrape_main_table(url: str) -> list:
-    """Scrapes the main table of electoral districts."""
+def scrape_main_table(url: str) -> list[dict[str, str]]:
+    """Scrape the main table of electoral districts."""
     response = requests.get(url)
     if response.status_code != 200:
         print("Error: Failed to fetch data from the URL. HTTP status code:", response.status_code)
@@ -55,21 +63,32 @@ def scrape_main_table(url: str) -> list:
                 })
     return data
 
-def scrape_voting_results(link: str) -> dict:
-    """Scrapes voting results for a specific municipality."""
+def scrape_voting_results(link: str) -> dict[str, str | dict[str, str]]:
+    """Scrape voting results for a specific municipality."""
     response = requests.get(link)
     soup = BeautifulSoup(response.text, 'html.parser')
 
-    results = {
-        'registered': soup.find(headers='sa2').text, # voters on the list 
-        'envelopes': soup.find(headers='sa3').text,  # issued envelopes  
-        'valid': soup.find(headers='sa6').text       # valid votes
+    # Initialize results with default values
+    results: dict[str, str | dict[str, str]] = {
+        'registered': '0', # voters on the list
+        'envelopes': '0',  # issued envelopes
+        'valid': '0',      # valid votes
+        'parties': {}      # dictionary for party results
     }
+
+    # Safely extract data, ensuring no NoneType errors
+    registered = soup.find(headers='sa2')
+    envelopes = soup.find(headers='sa3')
+    valid = soup.find(headers='sa6')
+
+    results['registered'] = registered.text if registered else '0'
+    results['envelopes'] = envelopes.text if envelopes else '0'
+    results['valid'] = valid.text if valid else '0'
 
     # Scrape political parties and their vote counts from all tables
     # except the first table which contains summary data
     party_tables = soup.find_all('table')[1:]  
-    parties = {}
+    parties: dict[str, str] = {}
 
     for table in party_tables:
         rows = table.find_all('tr')[2:]  # Skip header rows
@@ -85,12 +104,12 @@ def scrape_voting_results(link: str) -> dict:
 
     return results
 
-def save_to_csv(data: list, filename: str):
-    """Saves the scraped data to a CSV file."""
+def save_to_csv(data: list[dict[str, str | dict[str, str]]], filename: str) -> None:
+    """Save the scraped data to a CSV file."""
     # Collect all party names from the data in order of appearance
     all_parties = []
     for row in data:
-        if 'parties' in row:
+        if isinstance(row['parties'], dict):
             for party in row['parties'].keys():
                 if party not in all_parties:
                     all_parties.append(party)
@@ -109,10 +128,12 @@ def save_to_csv(data: list, filename: str):
         # CSV rows
         for row in data:
             # Get votes for each party or 0
-            party_votes = [
-                row['parties'].get(party, 0) 
-                for party in all_parties
-            ]
+            party_votes = []
+            if isinstance(row['parties'], dict):
+                party_votes = [
+                    row['parties'].get(party, 0) 
+                    for party in all_parties
+                ]
             writer.writerow([
                 row['code'],
                 row['name'],
@@ -122,8 +143,8 @@ def save_to_csv(data: list, filename: str):
                 *party_votes
             ])
 
-def main(url):
-    # Scrape the main table
+def main(url: str) -> list[dict[str, str | dict[str, str]]]:    
+    """Main function to scrape data and return results."""
     main_data = scrape_main_table(url)
     results = {}
     all_results = []
@@ -148,7 +169,7 @@ def main(url):
 if __name__ == "__main__":
 
     args = parse_arguments()
-    # Scrape the tables and save to CSV
     print(f"Please wait... Scraping data from {args.url}.")
+    # Scrape the tables and save to CSV
     save_to_csv(main(args.url), args.output)
     print(f"Results have been saved to {args.output}.")
