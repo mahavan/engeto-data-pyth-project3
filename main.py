@@ -8,6 +8,10 @@ def validate_url(url: str) -> bool:
     protocol = ("http://", "https://")
     return url.startswith(protocol)
 
+def validate_output_file(filename: str) -> bool:
+    """Validate if the output file has a .csv extension."""
+    return filename.endswith('.csv')
+
 def parse_arguments():
     """Parse and validate command-line arguments."""
     parser = argparse.ArgumentParser(description="Elections Scraper")
@@ -15,16 +19,23 @@ def parse_arguments():
     parser.add_argument("output", type=str, help="Name of the output CSV file")
     args = parser.parse_args()
 
+    # Validate URL
     if not validate_url(args.url):
         print("Error: The provided URL is not valid.")
         exit(1)
+
+    # Validate output file extension
+    if not validate_output_file(args.output):
+        print("Error: The output file must have a .csv extension.")
+        exit(1)
+
     return args
 
 def scrape_main_table(url: str) -> list:
     """Scrapes the main table of electoral districts."""
     response = requests.get(url)
     if response.status_code != 200:
-        print("Error: Failed to fetch data from the URL.")
+        print("Error: Failed to fetch data from the URL. HTTP status code:", response.status_code)
         exit(1)
 
     soup = BeautifulSoup(response.text, 'html.parser')
