@@ -28,7 +28,7 @@ python main.py 'https://www.volby.cz/pls/ps2017nss/ps32?xjazyk=CZ&xkraj=2&xnumnu
 Command line:
 ```bash
 Please wait... Scraping data from https://www.volby.cz/pls/ps2017nss/ps32?xjazyk=CZ&xkraj=2&xnumnuts=2101.
-Results have been saved to benesov.csv.
+Results have been saved to vysledky_benesov.csv.
 ```
 The output CSV file will contain the following columns:
 - `code`: Municipality code
